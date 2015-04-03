@@ -1,4 +1,4 @@
-package fr.tungnguyen.mongodb.hw23;
+package com.mongodb.hw23;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Sorts.ascending;
