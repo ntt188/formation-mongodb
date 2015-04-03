@@ -1,7 +1,8 @@
 package com.mongodb.hw31;
 
 import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Sorts.ascending;
+
+import java.util.List;
 
 import org.bson.Document;
 
@@ -11,31 +12,48 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 
 public class App {
+
+	private static final String SCORES = "scores";
 	private static final String _ID = "_id";
-	private static final String STUDENT_ID = "student_id";
-	
+
 	public static void main(String[] args) {
 		MongoClient client = new MongoClient();
 		try {
 			
-			MongoDatabase db = client.getDatabase("students");
-	        MongoCollection<Document> collection = db.getCollection("grades");
+			MongoDatabase db = client.getDatabase("school");
+	        MongoCollection<Document> collection = db.getCollection("students");
 	        
-	        MongoCursor<Document> cursor = collection.find(eq("type", "homework"))
-	        		.sort(ascending(STUDENT_ID, "score")).iterator();
-	        Double previousStudentId = null;
-	        Double currentStudentId;
+	        MongoCursor<Document> cursor = collection.find().iterator();
+	        
 	        while(cursor.hasNext()) {
-	        	Document document = cursor.next();	        	
-	        	currentStudentId = document.getDouble(STUDENT_ID);
-	        	if (previousStudentId == null || !currentStudentId.equals(previousStudentId)) {
-	        		collection.deleteOne(eq(_ID, document.get(_ID)));	        			
-	        	}
-	        	previousStudentId = currentStudentId;	        		
-	        }	        
+	        	Document documentStudent = cursor.next();
+	        	@SuppressWarnings("unchecked")
+				List<Document> documentsScore = (List<Document>) documentStudent.get(SCORES);	        	
+	        	Document documentMinHomeworkScore = findMinHomeworkScore(documentsScore);	        	
+	        	if (documentMinHomeworkScore != null) {	        		
+	        		documentsScore.remove(documentMinHomeworkScore);
+	        		collection.updateOne(eq(_ID, documentStudent.get(_ID)), 
+	        				new Document("$set", new Document(SCORES, documentsScore)));
+	        	}	        		        	
+	        }        
 	        
 		} finally {
 			client.close();
 		}
+	}
+
+	private static Document findMinHomeworkScore(List<Document> documentsScore) {
+		Double minScoreHomework = 101.0;
+		Document documentMinScoreHomework = null;
+		for (Document documentScore : documentsScore) {	        		
+			if ("homework".equals(documentScore.getString("type"))) {
+				Double score = documentScore.getDouble("score");	
+				if (score < minScoreHomework) {
+					minScoreHomework = score;
+					documentMinScoreHomework = documentScore;
+				}
+			}
+		}
+		return documentMinScoreHomework;
 	}
 }
